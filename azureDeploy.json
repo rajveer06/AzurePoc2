@@ -1,0 +1,115 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "resources": [
+      {
+        "apiVersion": "2022-03-01",
+        "type": "Microsoft.Compute/virtualMachineScaleSets",
+        "name": "vmss-autoscale",
+        "location": "[parameters('location')]",
+        "properties": {
+          "overprovision": "false",
+          "upgradePolicy": {
+            "mode": "Automatic"
+          },
+          "sku": {
+            "name": "Standard_DS2_v2",
+            "tier": "Standard",
+            "capacity": "[parameters('initialInstanceCount')]"
+          },
+          "virtualMachineProfile": {
+            "extensionProfile": {
+              "extensions": [
+                {
+                  "name": "installAppExtension",
+                  "properties": {
+                    "publisher": "Microsoft.Compute",
+                    "type": "CustomScriptExtension",
+                    "typeHandlerVersion": "1.10",
+                    "autoUpgradeMinorVersion": true,
+                    "settings": {
+                      "script": "[parameters('installationScript')]"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "autoScaleSettings": {
+          "enabled": true,
+          "profile": {
+            "rules": [
+              {
+                "metricTrigger": {
+                  "metricName": "Percentage CPU",
+                  "metricNamespace": "Microsoft.Compute/virtualMachineScaleSets",
+                  "metricResourceUri": "[resourceId('Microsoft.Compute/virtualMachineScaleSets', 'vmss-autoscale')]",
+                  "operator": "GreaterThan",
+                  "threshold": 75,
+                  "direction": "Increase",
+                  "changeCount": 1,
+                  "cooldown": "PT5M"
+                },
+                "scaleAction": {
+                  "direction": "Increase",
+                  "type": "ChangeCount",
+                  "value": 1,
+                  "cooldown": "PT5M"
+                }
+              },
+              {
+                "metricTrigger": {
+                  "metricName": "Percentage CPU",
+                  "metricNamespace": "Microsoft.Compute/virtualMachineScaleSets",
+                  "metricResourceUri": "[resourceId('Microsoft.Compute/virtualMachineScaleSets', 'vmss-autoscale')]",
+                  "operator": "LessThan",
+                  "threshold": 25,
+                  "direction": "Decrease",
+                  "changeCount": 1,
+                  "cooldown": "PT5M"
+                },
+                "scaleAction": {
+                  "direction": "Decrease",
+                  "type": "ChangeCount",
+                  "value": 1,
+                  "cooldown": "PT5M"
+                }
+              }
+            ]
+          }
+        }
+        }
+      }
+    ],
+    "parameters": {
+      "location": {
+        "type": "string",
+        "defaultValue": "[resourceGroup().location]",
+        "metadata": {
+          "description": "Location for all resources."
+        }
+      },
+      "initialInstanceCount": {
+        "type": "int",
+        "defaultValue": 2,
+        "metadata": {
+          "description": "Initial number of instances in the VM Scale Set."
+        }
+      },
+      "installationScript": {
+        "type": "string",
+        "metadata": {
+          "description": "Script for installing the application."
+        }
+      }
+    },
+     "outputs": {
+    "vmssName": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Compute/virtualMachineScaleSets', 'vmss-autoscale')]"
+    }
+  }
+}
+    
+
+  
